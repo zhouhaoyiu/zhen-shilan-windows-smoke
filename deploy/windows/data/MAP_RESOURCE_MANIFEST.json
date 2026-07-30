@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "coordinateReferenceSystem": "EPSG:4490",
+  "usage": "省、市、县行政区划按事件范围抽取",
+  "files": [
+    {
+      "filename": "中国_省.geojson",
+      "bytes": 1698398,
+      "sha256": "3af8294f9ad61cc2bf84c1bb7e4bbf86a6336c68d754b699a0e6ddc33ef81486"
+    },
+    {
+      "filename": "中国_市.geojson",
+      "bytes": 4265699,
+      "sha256": "d7a6f05b7e58cf758d74bd71ed0ea2ce981ef99436e4881e9a68098c3cd80b3b"
+    },
+    {
+      "filename": "中国_县.geojson",
+      "bytes": 10006881,
+      "sha256": "91edf86abe109a1de33052977852e37f848f350d37ae069b40e0d80dcc2a97d3"
+    }
+  ],
+  "distributionNotice": "地图数据的对外再分发权不由项目代码许可证授予；公开发布部署包前应单独核验地图授权。"
+}

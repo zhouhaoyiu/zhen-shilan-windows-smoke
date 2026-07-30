@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="震·时澜近实时地震波场推测与结果可视化工作台">
+  <title>震·时澜 · 近实时地震波场推测系统</title>
+  <link rel="icon" type="image/png" href="./assets/zhen-shilan-logo-v1.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="#" aria-label="震·时澜近实时地震波场推测系统首页">
+      <span class="brand-copy">
+        <img class="brand-logo" src="./assets/zhen-shilan-logo-original.png?v=20260716" alt="" aria-hidden="true">
+        <small>近实时地震波场推测</small>
+      </span>
+    </a>
+
+    <div class="header-actions">
+      <label class="event-switcher" id="event-switcher-wrap" hidden>
+        <span>事件</span>
+        <select id="event-switcher"></select>
+      </label>
+      <button class="button button-quiet" id="demo-button" type="button">重载事件目录</button>
+      <a class="button button-quiet" id="result-download" href="#" download hidden>下载完整结果</a>
+      <button class="button button-quiet" id="watch-button" type="button">文件夹监控</button>
+      <button class="button button-quiet" id="archive-button" type="button">归档记录</button>
+      <button class="button button-quiet" id="folder-button" type="button">导入已计算结果</button>
+      <button class="button button-primary" id="raw-folder-button" type="button">导入 EIdata/HNdata</button>
+      <input id="folder-input" type="file" webkitdirectory multiple hidden>
+      <input id="raw-folder-input" type="file" webkitdirectory multiple hidden>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar" aria-label="事件与数据状态">
+      <div class="sidebar-kicker">当前事件</div>
+      <h1 id="event-title">正在读取演示数据</h1>
+      <div class="badges" id="source-badges" aria-label="数据标记"></div>
+
+      <dl class="event-facts">
+        <div><dt>发震时刻</dt><dd id="fact-time">—</dd></div>
+        <div><dt>震中</dt><dd id="fact-location">—</dd></div>
+      </dl>
+
+      <nav class="section-nav" aria-label="结果视图">
+        <button class="nav-item is-active" type="button" data-view="map" aria-current="page">
+          <span>01</span> 空间分布
+        </button>
+        <button class="nav-item" type="button" data-view="attenuation">
+          <span>02</span> 距离衰减
+        </button>
+        <button class="nav-item" type="button" data-view="waveforms">
+          <span>03</span> 三分量波形
+        </button>
+        <button class="nav-item" type="button" data-view="artifacts">
+          <span>04</span> 成果图件
+        </button>
+      </nav>
+
+      <section class="sidebar-references" aria-labelledby="sidebar-references-title">
+        <h2 id="sidebar-references-title">方法基础与论文</h2>
+        <ol>
+          <li>
+            <a href="http://www.geophy.cn/article/doi/10.6038/cjg2023R0686" target="_blank" rel="noopener noreferrer">张世亮, 马强, 等. 2024. 地球物理学报, 67(11): 4171-4188.</a>
+          </li>
+          <li>
+            <a href="http://www.geophy.cn/article/doi/10.6038/cjg2025T0270" target="_blank" rel="noopener noreferrer">马强, 张世亮, 等. 2026. 地球物理学报, 69(3): 1090-1109.</a>
+          </li>
+          <li>
+            <a href="https://link.springer.com/article/10.1007/s11803-026-2383-3" target="_blank" rel="noopener noreferrer">Zhang SL, Ma Q, et al. 2026. Earthq. Eng. Eng. Vib. 25, 279–299.</a>
+          </li>
+        </ol>
+      </section>
+    </aside>
+
+    <main class="workspace" id="workspace" tabindex="0" aria-label="结果工作区">
+      <div class="loading" id="loading" role="status">
+        <span class="loading-line"></span>
+        <span>正在装载地震项目结果…</span>
+      </div>
+
+      <div id="dashboard" hidden>
+        <section class="workspace-head" aria-labelledby="workspace-title">
+          <div>
+            <p class="eyebrow" id="workspace-eyebrow">空间分布 / Spatial field</p>
+            <h2 id="workspace-title">观测与推测场点</h2>
+          </div>
+          <p class="status-line"><span class="status-dot"></span><span id="load-status">数据已就绪</span></p>
+        </section>
+
+        <section class="metrics" id="event-metrics" aria-label="事件摘要" hidden>
+          <article class="metric">
+            <span>实测台站</span>
+            <strong id="metric-observed">—</strong>
+            <small>三分量实测记录</small>
+          </article>
+          <article class="metric">
+            <span>推测场点</span>
+            <strong id="metric-inferred">—</strong>
+            <small id="metric-inferred-note">10 × 10 网格</small>
+          </article>
+          <article class="metric">
+            <span>推测峰值 PGA</span>
+            <strong id="metric-max-pga">—</strong>
+            <small id="metric-max-pga-note">cm/s²</small>
+          </article>
+          <article class="metric">
+            <span>推测最高烈度</span>
+            <strong id="metric-max-intensity">—</strong>
+            <small id="metric-max-intensity-note">仪器地震烈度</small>
+          </article>
+        </section>
+
+        <section class="view is-active" id="view-map" aria-labelledby="map-title">
+          <div class="view-toolbar">
+            <div>
+              <p class="section-index">01 / SPACE</p>
+              <h3 id="map-title">地震动空间分布</h3>
+            </div>
+            <div class="map-controls">
+              <label class="field-label">
+                <span>着色指标</span>
+                <select id="map-metric">
+                  <option value="intensity">仪器地震烈度</option>
+                  <option value="PGA">PGA · cm/s²</option>
+                  <option value="PGV">PGV · cm/s</option>
+                  <option value="PSA03">PSA 0.3 s · cm/s²</option>
+                  <option value="PSA10">PSA 1.0 s · cm/s²</option>
+                  <option value="PSA30">PSA 3.0 s · cm/s²</option>
+                </select>
+              </label>
+              <label class="field-label">
+                <span>右图图层</span>
+                <select id="field-mode">
+                  <option value="overlay">Image overlay</option>
+                  <option value="contours">等值线图</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div class="map-layout">
+            <div class="map-pair">
+              <section class="map-panel" aria-labelledby="scatter-map-title">
+                <header>
+                  <h4 id="scatter-map-title">实测与推测散点</h4>
+                  <small>固定强震分级；三角形为实测，圆点为推测；支持缩放和平移</small>
+                </header>
+                <div class="plot-frame map-frame">
+                  <svg id="map-chart" role="img" aria-labelledby="map-svg-title map-svg-desc">
+                    <title id="map-svg-title">事件实测台站和质控后推测场点空间分布</title>
+                    <desc id="map-svg-desc">可缩放和平移；颜色表示当前指标，三角形表示实测台站，圆点表示质控通过的推测场点，星形表示震中。</desc>
+                  </svg>
+                  <div class="chart-tooltip" id="map-tooltip" role="status" hidden></div>
+                  <div class="map-zoom-controls" aria-label="散点地图缩放控制">
+                    <button id="map-zoom-in" type="button" aria-label="放大散点地图" title="放大">+</button>
+                    <button id="map-zoom-out" type="button" aria-label="缩小散点地图" title="缩小">−</button>
+                    <button id="map-zoom-reset" type="button" aria-label="复位散点地图" title="复位">↺</button>
+                  </div>
+                </div>
+              </section>
+
+              <section class="map-panel" aria-labelledby="field-map-title">
+                <header>
+                  <h4 id="field-map-title">推测连续场</h4>
+                  <small>固定强震分级；滚轮或按钮缩放，拖动平移，凸包外透明</small>
+                </header>
+                <div class="plot-frame map-frame">
+                  <svg id="field-chart" role="img" aria-labelledby="field-svg-title field-svg-desc">
+                    <title id="field-svg-title">质控后推测点的连续场</title>
+                    <desc id="field-svg-desc">可缩放和平移，并可切换彩色图像覆盖层和等值线图；PGA 与 PSA 使用固定加速度分级，PGV 使用固定速度分级，凸包外及无数据区透明。</desc>
+                  </svg>
+                  <div class="map-zoom-controls" aria-label="连续场地图缩放控制">
+                    <button id="field-zoom-in" type="button" aria-label="放大连续场地图" title="放大">+</button>
+                    <button id="field-zoom-out" type="button" aria-label="缩小连续场地图" title="缩小">−</button>
+                    <button id="field-zoom-reset" type="button" aria-label="复位连续场地图" title="复位">↺</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <aside class="selection-panel" aria-live="polite">
+              <p class="selection-label">选中位置</p>
+              <h4 id="selection-name">点击地图标记</h4>
+              <dl id="selection-values">
+                <div><dt>类型</dt><dd data-point-field="kind">—</dd></div>
+                <div><dt>PGA</dt><dd data-point-field="PGA">—</dd></div>
+                <div><dt>PGV</dt><dd data-point-field="PGV">—</dd></div>
+                <div><dt>PSA 0.3 s</dt><dd data-point-field="PSA03">—</dd></div>
+                <div><dt>PSA 1.0 s</dt><dd data-point-field="PSA10">—</dd></div>
+                <div><dt>PSA 3.0 s</dt><dd data-point-field="PSA30">—</dd></div>
+                <div><dt>仪器地震烈度</dt><dd data-point-field="intensity">—</dd></div>
+              </dl>
+              <p class="selection-help" id="selection-help">标记形状区分实测与推测，颜色按固定 1–10+ 强震分级表达当前指标。</p>
+            </aside>
+          </div>
+          <div class="plot-legend" id="map-legend" aria-label="固定强震分级与点型图例"></div>
+        </section>
+
+        <section class="view" id="view-attenuation" aria-labelledby="attenuation-title" hidden>
+          <div class="view-toolbar">
+            <div>
+              <p class="section-index">02 / DISTANCE</p>
+              <h3 id="attenuation-title">地震动随震源距变化</h3>
+            </div>
+          </div>
+          <div class="small-multiples" id="attenuation-charts"></div>
+          <p class="plot-caption">横轴为震源距。PGA、PGV 与 5% 阻尼 PSA 使用对数坐标；悬停均值与离散范围可查看距离箱统计值。</p>
+        </section>
+
+        <section class="view" id="view-waveforms" aria-labelledby="waveform-title" hidden>
+          <div class="view-toolbar">
+            <div>
+              <p class="section-index">03 / WAVEFORM</p>
+              <h3 id="waveform-title">三分量加速度时程</h3>
+            </div>
+            <label class="field-label">
+              <span>波形位置</span>
+              <select id="waveform-select"></select>
+            </label>
+          </div>
+          <div class="plot-frame waveform-frame">
+            <svg id="waveform-chart" role="img" aria-labelledby="waveform-svg-title waveform-svg-desc">
+              <title id="waveform-svg-title">EW、NS 和 UD 三分量加速度波形</title>
+              <desc id="waveform-svg-desc">三条对齐时间轴展示所选位置的三个加速度分量。</desc>
+            </svg>
+          </div>
+          <div class="waveform-meta" id="waveform-meta"></div>
+        </section>
+
+        <section class="view" id="view-artifacts" aria-labelledby="artifacts-title" hidden>
+          <div class="view-toolbar">
+            <div>
+              <p class="section-index">04 / OUTPUT</p>
+              <h3 id="artifacts-title">流程生成图件</h3>
+            </div>
+          </div>
+          <div class="artifact-grid" id="artifact-grid"></div>
+        </section>
+
+        <section class="view" id="view-ml" aria-labelledby="ml-title" hidden>
+          <div class="view-toolbar">
+            <div>
+              <p class="section-index">05 / RESIDUAL</p>
+              <h3 id="ml-title">ZSL 对照、残差修正与严格留出验证</h3>
+            </div>
+            <p class="pilot-status" id="ml-pilot-status">正在读取试验结果…</p>
+          </div>
+
+          <p class="ml-boundary" id="ml-boundary">
+            本页先给出同一遮蔽目标和同一 Step3 矢量 PGA 下的 ZSL 方法对照，再分开呈现全量回溯开发评估与事件×台站零重叠评估。
+          </p>
+
+          <div class="evidence-stack" aria-label="完整 K-NET 残差研究证据">
+            <section class="evidence-block evidence-unified" aria-labelledby="unified-step3-title">
+              <header class="evidence-header">
+                <div>
+                  <p class="section-index">EVIDENCE 01 / UNIFIED FULL-COHORT STEP3</p>
+                  <h4 id="unified-step3-title">18,264 条统一 Step3：全量 ZSL 覆盖与 2006 同目标比较</h4>
+                </div>
+                <span class="evidence-badge evidence-badge-unified">主结果</span>
+              </header>
+              <p class="evidence-boundary" id="unified-step3-boundary">正在读取全量 ZSL 覆盖与共同目标比较…</p>
+              <section class="metrics ml-metrics" aria-label="统一 Step3 全量比较摘要">
+                <article class="metric">
+                  <span>Step3 记录 / 事件</span>
+                  <strong id="unified-step3-size">—</strong>
+                  <small id="unified-step3-size-note">原生 100/200 Hz 重算</small>
+                </article>
+                <article class="metric">
+                  <span>ZSL-5 通过 / 全量</span>
+                  <strong id="unified-zsl-coverage">—</strong>
+                  <small id="unified-zsl-coverage-note">凸包与恰好 5 邻站 QC</small>
+                </article>
+                <article class="metric">
+                  <span>已知台站 当前 / ZSL</span>
+                  <strong id="unified-known-mae">—</strong>
+                  <small id="unified-known-note">2006 共同目标 MAE</small>
+                </article>
+                <article class="metric">
+                  <span>严格留出 当前 / ZSL</span>
+                  <strong id="unified-strict-mae">—</strong>
+                  <small id="unified-strict-note">事件×台站共同目标 MAE</small>
+                </article>
+              </section>
+              <p class="ml-audit" id="unified-step3-audit">正在读取配对 bootstrap 与几何覆盖边界。</p>
+              <figure class="artifact evidence-figure">
+                <a class="artifact-link" href="./demo/ml_pilot/unified_step3_comparison/unified_step3_comparison.png">
+                  <img src="./demo/ml_pilot/unified_step3_comparison/unified_step3_comparison.png" alt="全量 Step3 ZSL 覆盖、实测预测散点和共同样本误差比较">
+                </a>
+                <figcaption id="unified-step3-caption">全量覆盖与两个 2006 共同目标检验</figcaption>
+              </figure>
+              <section class="result-files">
+                <strong>统一同口径比较产出</strong>
+                <div>
+                  <a href="./demo/ml_pilot/unified_step3_comparison/research_report.html" target="_blank" rel="noreferrer">技术结果报告 HTML</a>
+                  <a href="./demo/ml_pilot/unified_step3_comparison/comparison_summary.json" download>比较摘要 JSON</a>
+                  <a href="./demo/ml_pilot/unified_step3_comparison/comparison_predictions.csv" download>全部评估目标预测（含 ZSL QC）CSV</a>
+                  <a href="./demo/ml_pilot/unified_step3_comparison/common_comparison_predictions.csv" download>ZSL 可计算共同目标预测 CSV</a>
+                  <a href="./demo/ml_pilot/unified_step3_comparison/comparison_metrics.csv" download>指标 CSV</a>
+                  <a href="./demo/ml_pilot/unified_step3_comparison/event_comparison.csv" download>共同目标逐事件比较 CSV</a>
+                  <a href="./demo/ml_pilot/unified_step3_comparison/step3_targets.csv" download>18,264 条 Step3 目标</a>
+                  <a href="./demo/ml_pilot/full_zsl_cache/full_zsl_predictions.csv" download>全量 ZSL 逐目标结果</a>
+                  <a href="./demo/ml_pilot/strict_zsl_cache_test_k5/strict_zsl_predictions.csv" download>严格 ZSL 逐目标结果</a>
+                </div>
+              </section>
+            </section>
+
+            <section class="evidence-block evidence-zsl" aria-labelledby="zsl-comparison-title">
+              <header class="evidence-header">
+                <div>
+                  <p class="section-index">EVIDENCE 01A / EARLY SENSITIVITY REPLICATION</p>
+                  <h4 id="zsl-comparison-title">24 事件早期 ZSL 敏感性复验</h4>
+                </div>
+                <span class="evidence-badge evidence-badge-zsl">补充复验</span>
+              </header>
+              <p class="evidence-boundary" id="zsl-comparison-boundary">正在读取同样本 ZSL 对照范围…</p>
+              <section class="metrics ml-metrics" aria-label="ZSL 方法同样本对照摘要">
+                <article class="metric">
+                  <span>ZSL 流程基线 MAE</span>
+                  <strong id="ml-zsl-mae">—</strong>
+                  <small>log10(Step3 矢量 PGA)</small>
+                </article>
+                <article class="metric">
+                  <span>ZSL + 残差回归 MAE</span>
+                  <strong id="ml-ridge-mae">—</strong>
+                  <small id="ml-ridge-note">保留 ZSL 预测作为基线</small>
+                </article>
+                <article class="metric">
+                  <span>新坐标空间模型 MAE</span>
+                  <strong id="ml-broad-mae">—</strong>
+                  <small id="ml-broad-note">不使用台站身份</small>
+                </article>
+                <article class="metric">
+                  <span>历史台站模型 MAE</span>
+                  <strong id="ml-site-mae">—</strong>
+                  <small id="ml-site-note">需要已知台站历史</small>
+                </article>
+              </section>
+              <p class="ml-audit" id="ml-audit">正在读取事件互斥交叉验证与事件块 bootstrap。</p>
+              <p class="evidence-note" id="zsl-temporal-audit">正在读取 2005–2006 年时间外对照。</p>
+              <div class="artifact-grid ml-figure-grid">
+                <figure class="artifact">
+                  <a class="artifact-link" href="./demo/ml_pilot/group_event_residual_correction.png">
+                    <img src="./demo/ml_pilot/group_event_residual_correction.png" alt="24 个事件五折留事件交叉验证的 ZSL 方法与残差模型对照">
+                  </a>
+                  <figcaption>24 事件、501 个共同可预测目标：5 折留事件同样本对照</figcaption>
+                </figure>
+                <figure class="artifact">
+                  <a class="artifact-link" href="./demo/ml_pilot/held_event_residual_correction.png">
+                    <img src="./demo/ml_pilot/held_event_residual_correction.png" alt="按年份训练并在 2005 至 2006 年事件测试的 ZSL 方法与残差模型对照">
+                  </a>
+                  <figcaption>时间外对照：历史信息截止到目标年份之前，测试 2005–2006 年</figcaption>
+                </figure>
+                <section class="result-files">
+                  <strong>ZSL 同样本对照产出</strong>
+                  <div>
+                    <a href="./demo/ml_pilot/summary.json" download>试验摘要 JSON</a>
+                    <a href="./demo/ml_pilot/masked_station_samples.csv" download>遮蔽样本 CSV</a>
+                    <a href="./demo/ml_pilot/group_event_predictions.csv" download>交叉验证预测 CSV</a>
+                    <a href="./demo/ml_pilot/group_event_metrics.csv" download>交叉验证指标 CSV</a>
+                    <a href="./demo/ml_pilot/held_event_predictions.csv" download>时间外预测 CSV</a>
+                    <a href="./demo/ml_pilot/held_event_metrics.csv" download>时间外指标 CSV</a>
+                    <a href="./demo/ml_pilot/historical_station_site_terms.csv" download>历史场地项 CSV</a>
+                  </div>
+                </section>
+              </div>
+            </section>
+
+            <section class="evidence-block evidence-development" aria-labelledby="residual-research-title">
+              <header class="evidence-header">
+                <div>
+                  <p class="section-index">EVIDENCE 02 / RETROSPECTIVE DEVELOPMENT</p>
+                  <h4 id="residual-research-title">2006 回溯开发评估</h4>
+                </div>
+                <span class="evidence-badge evidence-badge-development">开发证据</span>
+              </header>
+              <p class="evidence-boundary" id="residual-research-boundary">正在读取 residual_research/summary.json…</p>
+              <section class="metrics ml-metrics" aria-label="2006 回溯开发评估摘要">
+                <article class="metric">
+                  <span>2006 目标 / 事件</span>
+                  <strong id="residual-research-size">—</strong>
+                  <small id="residual-research-size-note">正在读取台站数</small>
+                </article>
+                <article class="metric">
+                  <span>固定衰减 MAE</span>
+                  <strong id="residual-research-fixed">—</strong>
+                  <small>log10(PGA)</small>
+                </article>
+                <article class="metric">
+                  <span>历史场地 + 邻域 MAE</span>
+                  <strong id="residual-research-site">—</strong>
+                  <small id="residual-research-site-note">等待计算改变量</small>
+                </article>
+                <article class="metric">
+                  <span>验证选定模型 MAE</span>
+                  <strong id="residual-research-selected">—</strong>
+                  <small id="residual-research-selected-note">等待计算改变量</small>
+                </article>
+              </section>
+              <p class="ml-audit" id="residual-research-audit">正在读取事件块 bootstrap 审计。</p>
+              <p class="evidence-note" id="residual-research-jshis">正在读取 J-SHIS 验证状态。</p>
+              <figure class="artifact evidence-figure">
+                <a class="artifact-link" href="./demo/ml_pilot/residual_research/known_station_residual_research.png">
+                  <img src="./demo/ml_pilot/residual_research/known_station_residual_research.png" alt="完整 K-NET 2006 回溯开发评估的残差修正结果">
+                </a>
+                <figcaption id="residual-research-caption">正在读取 2006 回溯开发评估样本范围</figcaption>
+              </figure>
+              <section class="result-files">
+                <strong>回溯开发产出</strong>
+                <div>
+                  <a href="./demo/ml_pilot/residual_research/summary.json" download>摘要 JSON</a>
+                  <a href="./demo/ml_pilot/residual_research/known_station_2006_predictions.csv" download>2006 预测 CSV</a>
+                  <a href="./demo/ml_pilot/residual_research/known_station_2006_metrics.csv" download>指标 CSV</a>
+                  <a href="./demo/ml_pilot/residual_research/model_validation_scores.csv" download>模型选参 CSV</a>
+                  <a href="./demo/ml_pilot/residual_research/residual_slices.csv" download>残差分层 CSV</a>
+                  <a href="./demo/ml_pilot/residual_research/selected_known_station_model.joblib" download>模型文件</a>
+                </div>
+              </section>
+            </section>
+
+            <section class="evidence-block evidence-strict" aria-labelledby="strict-holdout-title">
+              <header class="evidence-header">
+                <div>
+                  <p class="section-index">EVIDENCE 03 / EVENT × STATION HOLDOUT</p>
+                  <h4 id="strict-holdout-title">事件 × 台站零重叠评估</h4>
+                </div>
+                <span class="evidence-badge evidence-badge-strict">严格留出</span>
+              </header>
+              <p class="evidence-boundary" id="strict-holdout-boundary">正在读取 strict_knet_holdout/summary.json…</p>
+              <section class="metrics ml-metrics" aria-label="事件与台站零重叠评估摘要">
+                <article class="metric">
+                  <span>2006 目标 / 事件</span>
+                  <strong id="strict-holdout-size">—</strong>
+                  <small id="strict-holdout-size-note">正在读取目标台站数</small>
+                </article>
+                <article class="metric">
+                  <span>固定衰减 MAE</span>
+                  <strong id="strict-holdout-fixed">—</strong>
+                  <small>log10(PGA)</small>
+                </article>
+                <article class="metric">
+                  <span>局部残差 MAE</span>
+                  <strong id="strict-holdout-local">—</strong>
+                  <small id="strict-holdout-local-note">仅开发台站提供同事件上下文</small>
+                </article>
+                <article class="metric">
+                  <span>验证选定模型 MAE</span>
+                  <strong id="strict-holdout-selected">—</strong>
+                  <small id="strict-holdout-selected-note">2005 验证选定</small>
+                </article>
+              </section>
+              <div class="integrity-strip" aria-label="严格留出重叠审计">
+                <div>
+                  <span>事件 / 目标台站重叠</span>
+                  <strong id="strict-holdout-overlap">— / —</strong>
+                </div>
+                <p id="strict-holdout-overlap-note">正在读取目标—上下文重叠和目标历史泄漏审计。</p>
+              </div>
+              <p class="ml-audit" id="strict-holdout-audit">正在读取事件×台站双向 bootstrap 审计。</p>
+              <p class="evidence-note" id="strict-holdout-jshis">正在读取 J-SHIS 验证状态。</p>
+              <figure class="artifact evidence-figure">
+                <a class="artifact-link" href="./demo/ml_pilot/strict_knet_holdout/strict_knet_holdout.png">
+                  <img src="./demo/ml_pilot/strict_knet_holdout/strict_knet_holdout.png" alt="完整 K-NET 事件与台站零重叠评估结果">
+                </a>
+                <figcaption id="strict-holdout-caption">正在读取严格留出样本范围</figcaption>
+              </figure>
+              <section class="result-files">
+                <strong>严格留出产出</strong>
+                <div>
+                  <a href="./demo/ml_pilot/strict_knet_holdout/summary.json" download>摘要 JSON</a>
+                  <a href="./demo/ml_pilot/strict_knet_holdout/strict_2006_predictions.csv" download>2006 预测 CSV</a>
+                  <a href="./demo/ml_pilot/strict_knet_holdout/strict_2006_metrics.csv" download>指标 CSV</a>
+                  <a href="./demo/ml_pilot/strict_knet_holdout/validation_model_scores.csv" download>验证选参 CSV</a>
+                  <a href="./demo/ml_pilot/strict_knet_holdout/split_audit.csv" download>切分审计 CSV</a>
+                  <a href="./demo/ml_pilot/strict_knet_holdout/station_split_inventory.csv" download>台站切分 CSV</a>
+                  <a href="./demo/ml_pilot/strict_knet_holdout/paired_bootstrap_summary.csv" download>Bootstrap CSV</a>
+                  <a href="./demo/ml_pilot/strict_knet_holdout/validation_selected_model.joblib" download>模型文件</a>
+                </div>
+              </section>
+            </section>
+          </div>
+
+        </section>
+      </div>
+
+      <section class="error-state" id="error-state" hidden>
+        <span>数据未载入</span>
+        <h2 id="error-title">无法读取结果目录</h2>
+        <p id="error-message"></p>
+        <button class="button button-primary" id="error-open-button" type="button">重新选择目录</button>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="figure-lightbox" id="figure-lightbox" aria-labelledby="figure-lightbox-title">
+    <form class="figure-lightbox-head" method="dialog">
+      <h2 id="figure-lightbox-title">图件预览</h2>
+      <button class="dialog-close" type="submit" aria-label="关闭图件预览">×</button>
+    </form>
+    <div class="figure-lightbox-body" id="figure-lightbox-body"></div>
+  </dialog>
+
+  <dialog class="dialog-panel" id="import-dialog" aria-labelledby="import-dialog-title" aria-describedby="import-service-note">
+    <form class="dialog-head" method="dialog">
+      <div>
+        <p class="section-index">LOCAL PROCESSING</p>
+        <h2 id="import-dialog-title">导入原始强震记录</h2>
+      </div>
+      <button class="dialog-close" type="submit" aria-label="关闭导入窗口">×</button>
+    </form>
+    <div class="dialog-body">
+      <p class="dialog-note" id="import-service-note">正在检查本机处理服务…</p>
+      <section id="import-selection" hidden>
+        <dl class="import-summary">
+          <div><dt>事件目录</dt><dd id="import-root-name">—</dd></div>
+          <div><dt>原始 DAT</dt><dd id="import-file-count">—</dd></div>
+          <div><dt>数据量</dt><dd id="import-file-size">—</dd></div>
+        </dl>
+        <fieldset class="target-config" id="target-config">
+          <legend>推测点设置</legend>
+          <div class="target-config-head">
+            <label>
+              <span>生成方式</span>
+              <select id="target-mode">
+                <option value="grid">规则网格</option>
+                <option value="csv">导入经纬度 CSV</option>
+                <option value="manual">手动输入坐标</option>
+              </select>
+            </label>
+            <output id="target-config-status" role="status" aria-live="polite">正在校验设置</output>
+          </div>
+          <div class="target-config-panel target-grid-fields" data-target-panel="grid">
+            <label><span>行数（南北向）</span><input id="target-grid-rows" type="number" min="2" max="50" step="1" value="10"></label>
+            <span aria-hidden="true">×</span>
+            <label><span>列数（东西向）</span><input id="target-grid-columns" type="number" min="2" max="50" step="1" value="10"></label>
+          </div>
+          <div class="target-config-panel" data-target-panel="csv" hidden>
+            <label class="target-file-field">
+              <span>坐标文件（表头 lon,lat 或 longitude,latitude）</span>
+              <input id="target-csv-input" type="file" accept=".csv,text/csv">
+            </label>
+            <small id="target-csv-name">尚未选择 CSV</small>
+          </div>
+          <div class="target-config-panel" data-target-panel="manual" hidden>
+            <label class="target-manual-field">
+              <span>每行一个坐标：lon,lat</span>
+              <textarea id="target-manual-input" rows="5" spellcheck="false" placeholder="105.2500,37.4800&#10;105.4000,37.5500"></textarea>
+            </label>
+          </div>
+        </fieldset>
+        <label class="progress-row" for="upload-progress">
+          <span>上传</span><progress id="upload-progress" max="1" value="0"></progress><small id="upload-progress-note">等待开始</small>
+        </label>
+        <label class="progress-row" for="process-progress">
+          <span>处理</span><progress id="process-progress" max="100" value="0"></progress><small id="process-progress-note">等待上传</small>
+        </label>
+      </section>
+      <p class="dialog-status" id="import-status" role="status" aria-live="polite">请选择一个外层事件目录，其中至少包含 EIdata、HNdata 或 ElData。</p>
+      <div class="dialog-actions">
+        <button class="button button-quiet" id="import-choose-button" type="button">选择事件目录</button>
+        <button class="button button-primary" id="import-start-button" type="button" disabled>上传、处理并归档</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="dialog-panel watch-dialog" id="watch-dialog" aria-labelledby="watch-dialog-title" aria-describedby="watch-dialog-note">
+    <form class="dialog-head" method="dialog">
+      <div>
+        <p class="section-index">FOLDER MONITOR</p>
+        <h2 id="watch-dialog-title">文件夹监控</h2>
+      </div>
+      <button class="dialog-close" type="submit" aria-label="关闭文件夹监控窗口">×</button>
+    </form>
+    <div class="dialog-body">
+      <p class="dialog-note" id="watch-dialog-note">请选择运行本机服务的电脑可直接读取的根目录；新事件稳定后会自动处理并进入归档。</p>
+      <div class="watch-form">
+        <label class="watch-field watch-path">
+          <span>本机监控根目录</span>
+          <span class="watch-path-picker">
+            <input id="watch-path" type="text" placeholder="尚未选择目录" autocomplete="off" spellcheck="false" readonly required>
+            <button class="button button-quiet" id="watch-browse-button" type="button">选择目录</button>
+          </span>
+        </label>
+        <label class="watch-field">
+          <span>文件稳定等待</span>
+          <span class="input-with-unit"><input id="watch-stable-seconds" type="number" min="5" max="3600" step="1" value="15" required> 秒</span>
+        </label>
+        <label class="watch-check"><input id="watch-process-existing" type="checkbox"> 处理启动时已有事件</label>
+      </div>
+      <dl class="watch-summary">
+        <div><dt>当前状态</dt><dd id="watch-state">—</dd></div>
+        <div><dt>检测事件</dt><dd id="watch-detected">—</dd></div>
+        <div><dt>待处理</dt><dd id="watch-pending">—</dd></div>
+        <div><dt>最近扫描</dt><dd id="watch-last-scan">—</dd></div>
+        <div class="watch-summary-wide"><dt>最近事件</dt><dd id="watch-last-event">—</dd></div>
+      </dl>
+      <section class="watch-queue" aria-labelledby="watch-queue-title">
+        <header>
+          <h3 id="watch-queue-title">事件处理队列</h3>
+          <span id="watch-queue-summary">正在读取…</span>
+        </header>
+        <div class="watch-job-list" id="watch-job-list" aria-live="polite">
+          <p class="watch-job-empty">正在读取队列状态…</p>
+        </div>
+      </section>
+      <section class="watch-messages" aria-labelledby="watch-messages-title">
+        <h3 id="watch-messages-title">最近消息</h3>
+        <ol id="watch-message-list"><li>正在读取监控状态…</li></ol>
+      </section>
+      <p class="dialog-status" id="watch-feedback" role="status" aria-live="polite">监控默认只处理启动后新增或发生变化的事件目录。</p>
+      <div class="dialog-actions">
+        <button class="button button-quiet" id="watch-stop-button" type="button" disabled>停止监控</button>
+        <button class="button button-primary" id="watch-start-button" type="button">启动监控</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="dialog-panel archive-dialog" id="archive-dialog" aria-labelledby="archive-dialog-title">
+    <form class="dialog-head" method="dialog">
+      <div>
+        <p class="section-index">PROCESSING ARCHIVE</p>
+        <h2 id="archive-dialog-title">归档记录</h2>
+      </div>
+      <button class="dialog-close" type="submit" aria-label="关闭归档窗口">×</button>
+    </form>
+    <div class="dialog-body">
+      <p class="dialog-note">成功记录可重新打开成果；失败记录保留输入质控错误。</p>
+      <div class="archive-list" id="archive-list" aria-live="polite"><p class="archive-empty">正在读取归档…</p></div>
+      <div class="dialog-actions">
+        <button class="button button-quiet" id="archive-refresh-button" type="button">刷新归档</button>
+      </div>
+    </div>
+  </dialog>
+
+  <footer class="app-footer">
+    <span>震·时澜 · ZSL near-real-time seismic wavefield inference</span>
+    <span id="footer-provenance">等待数据来源</span>
+  </footer>
+
+  <script src="./vendor/d3.v7.min.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

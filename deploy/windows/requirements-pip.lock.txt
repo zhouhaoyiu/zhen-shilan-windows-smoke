@@ -1,0 +1,2 @@
+pykooh @ https://files.pythonhosted.org/packages/01/a9/d1686c09d4d98ff3cacb24810fb57fdc28bc26aca9ea068bb632fb3f9e7a/pykooh-0.5.0-py3-none-any.whl#sha256=41768131dcb851bde22078c29342490aabf1e36813c392bc608103b856fd6cd0
+pyrotd @ https://files.pythonhosted.org/packages/1f/d6/a4865634bd63cf5192db4969883ab0b5a99176a540c0369515f7ed44c0e4/pyRotd-0.6.1-py2.py3-none-any.whl#sha256=203b9617ec9a3497d1050030ec4b150a8ee710babe2e99f513767889e45ecdc0
