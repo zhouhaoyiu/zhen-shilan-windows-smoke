@@ -58,15 +58,7 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v5
-
-      - name: Set up Python 3.12 x64
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12.13"
-          architecture: "x64"
-          cache: pip
-          cache-dependency-path: deploy/windows/requirements-windows.lock.txt
+        uses: actions/checkout@v7
 
       - name: Define smoke-test paths
         shell: pwsh
@@ -74,6 +66,14 @@ jobs:
           "SMOKE_BUNDLE=$env:RUNNER_TEMP\ZhenShiLan-Windows-smoke" >> $env:GITHUB_ENV
           "SMOKE_LOGS=$env:RUNNER_TEMP\zsl-smoke-logs" >> $env:GITHUB_ENV
           "SMOKE_ZIP=$env:RUNNER_TEMP\ZhenShiLan-Windows-smoke.zip" >> $env:GITHUB_ENV
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          architecture: "x64"
+          cache: pip
+          cache-dependency-path: deploy/windows/requirements-windows.lock.txt
 
       - name: Install locked Windows dependencies
         shell: pwsh
@@ -98,7 +98,8 @@ jobs:
           python deploy/windows/verify_windows_runtime.py `
             --project-root "$env:SMOKE_BUNDLE" `
             --map-root "$env:SMOKE_BUNDLE\data\admin_geojson" `
-            --allow-host-python
+            --allow-host-python `
+            --allow-python-patch-mismatch
 
       - name: Start through batch entrypoint and test HTTP surface
         shell: pwsh
@@ -119,7 +120,7 @@ jobs:
 
       - name: Upload smoke-test logs
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: windows-smoke-logs
           path: ${{ env.SMOKE_LOGS }}
@@ -128,7 +129,7 @@ jobs:
 
       - name: Upload slim Windows fixture
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ZhenShiLan-Windows-smoke
           path: ${{ env.SMOKE_ZIP }}

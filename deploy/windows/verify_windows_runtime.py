@@ -74,6 +74,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="在 macOS/Linux 上只验证依赖和资源；正式 Windows 包不得使用",
     )
+    parser.add_argument(
+        "--allow-python-patch-mismatch",
+        action="store_true",
+        help="CI runner 可使用同一 Python 主次版本的不同补丁版本；正式离线包不得使用",
+    )
     return parser.parse_args()
 
 
@@ -98,7 +103,14 @@ def main() -> int:
             actual[package] = found
         if found != expected:
             message = f"{package}: expected {expected}, found {found}"
-            if args.allow_host_python and os.name != "nt":
+            same_python_series = (
+                package == "python"
+                and args.allow_python_patch_mismatch
+                and found.split(".")[:2] == expected.split(".")[:2]
+            )
+            if same_python_series:
+                warnings.append(f"CI Python patch differs from bundled runtime: {message}")
+            elif args.allow_host_python and os.name != "nt":
                 warnings.append(f"host runtime differs from Windows lock: {message}")
             else:
                 errors.append(message)
