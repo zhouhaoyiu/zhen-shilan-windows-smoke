@@ -36,6 +36,7 @@ FRONTEND_FILES = (
     "frontend/artifact-layout.js",
     "frontend/attenuation-bins.js",
     "frontend/target-config.js",
+    "frontend/demo/build_demo.py",
     "frontend/demo/knet-demo.json",
     "frontend/demo/japan-prefectures.geojson",
     "frontend/demo/world-land.geojson",
