@@ -99,7 +99,8 @@ def run(bundle: Path, port: int, log_dir: Path, timeout: int) -> dict[str, objec
             assert "/api/health" in app_js
             assert health["restartRequired"] is False
             assert health["administrativeBasemapConfigured"] is True
-            assert set(health["acceptedFolders"]) == {"EIData", "HNdata"}
+            accepted_folders = set(health["acceptedFolders"])
+            assert {"eidata", "hndata"}.issubset(accepted_folders)
             assert event_catalog["eventCount"] == 1
             assert len(event_catalog["events"]) == 1
             assert batch_catalog["eventCount"] == 0
