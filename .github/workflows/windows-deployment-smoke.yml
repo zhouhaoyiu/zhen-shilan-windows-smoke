@@ -55,6 +55,9 @@ jobs:
       PYTHONNOUSERSITE: "1"
       MPLBACKEND: Agg
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      SMOKE_BUNDLE: ${{ runner.temp }}\ZhenShiLan-Windows-smoke
+      SMOKE_LOGS: ${{ runner.temp }}\zsl-smoke-logs
+      SMOKE_ZIP: ${{ runner.temp }}\ZhenShiLan-Windows-smoke.zip
 
     steps:
       - name: Check out source
@@ -81,29 +84,24 @@ jobs:
           python -m py_compile deploy/windows/build_ci_smoke_bundle.py deploy/windows/run_windows_smoke.py
 
       - name: Build slim Windows fixture
-        id: bundle
         shell: pwsh
         run: |
-          $bundle = Join-Path $env:RUNNER_TEMP "ZhenShiLan-Windows-smoke"
-          $logs = Join-Path $env:RUNNER_TEMP "zsl-smoke-logs"
-          python deploy/windows/build_ci_smoke_bundle.py --output $bundle
-          "bundle=$bundle" >> $env:GITHUB_OUTPUT
-          "logs=$logs" >> $env:GITHUB_OUTPUT
+          python deploy/windows/build_ci_smoke_bundle.py --output "$env:SMOKE_BUNDLE"
 
       - name: Verify runtime imports and bundled maps
         shell: pwsh
         run: |
           python deploy/windows/verify_windows_runtime.py `
-            --project-root "${{ steps.bundle.outputs.bundle }}" `
-            --map-root "${{ steps.bundle.outputs.bundle }}\data\admin_geojson" `
+            --project-root "$env:SMOKE_BUNDLE" `
+            --map-root "$env:SMOKE_BUNDLE\data\admin_geojson" `
             --allow-host-python
 
       - name: Start through batch entrypoint and test HTTP surface
         shell: pwsh
         run: |
           python deploy/windows/run_windows_smoke.py `
-            --bundle "${{ steps.bundle.outputs.bundle }}" `
-            --log-dir "${{ steps.bundle.outputs.logs }}" `
+            --bundle "$env:SMOKE_BUNDLE" `
+            --log-dir "$env:SMOKE_LOGS" `
             --port 8765 `
             --timeout 90
 
@@ -111,10 +109,8 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $bundle = "${{ steps.bundle.outputs.bundle }}"
-          $zip = Join-Path $env:RUNNER_TEMP "ZhenShiLan-Windows-smoke.zip"
-          if (Test-Path $bundle) {
-            Compress-Archive -Path "$bundle\*" -DestinationPath $zip -Force
+          if (Test-Path "$env:SMOKE_BUNDLE") {
+            Compress-Archive -Path "$env:SMOKE_BUNDLE\*" -DestinationPath "$env:SMOKE_ZIP" -Force
           }
 
       - name: Upload smoke-test logs
@@ -122,7 +118,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-smoke-logs
-          path: ${{ steps.bundle.outputs.logs }}
+          path: ${{ env.SMOKE_LOGS }}
           if-no-files-found: warn
           retention-days: 14
 
@@ -131,6 +127,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ZhenShiLan-Windows-smoke
-          path: ${{ runner.temp }}/ZhenShiLan-Windows-smoke.zip
-          if-no-files-found: error
+          path: ${{ env.SMOKE_ZIP }}
+          if-no-files-found: warn
           retention-days: 7
